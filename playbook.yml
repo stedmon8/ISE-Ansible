@@ -1,0 +1,22 @@
+---
+
+- hosts: all
+  gather_facts: no
+  connection: local
+
+  tasks:
+
+   - name: Change Hostname and add DNS server
+     cisco.ios.ios_system:
+       hostname: c9300-1
+       name_servers: 
+        - 198.18.133.1
+
+   - name: Merge provided configuration with device configuration
+      cisco.ios.ios_l3_interfaces:
+        config:
+        - name: vlan 10
+          ipv4:
+          - address: 198.18.10.1/24
+        
+       
