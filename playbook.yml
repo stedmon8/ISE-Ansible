@@ -1,20 +1,9 @@
 ---
-- hosts: router_a
+- hosts: all
   gather_facts: no
   connection: local
 
   tasks:
-   - name: OBTAIN LOGIN INFORMATION
-     include_vars: secrets.yml
-
-   - name: DEFINE PROVIDER
-     set_fact:
-       provider:
-         host: "{{ ansible_host }}"
-         username: "{{ creds['username'] }}"
-         password: "{{ creds['password'] }}"
-         auth_pass: "{{ creds['auth_pass']
-
    - name: Change Hostname and add DNS server
      cisco.ios.ios_system:
        hostname: c9300-1
