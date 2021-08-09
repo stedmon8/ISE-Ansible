@@ -4,9 +4,9 @@
   connection: local
 
   tasks:
-   - name: configure top level configuration
+   - name: turn on ip routing 
      cisco.ios.ios_config:
-     lines: ip routing 
+      lines: ip routing 
 
    - name: Change hostname, domain name, and add DNS server
      cisco.ios.ios_system:
@@ -21,6 +21,7 @@
       - name: vlan 10
         ipv4:
         - address: 192.168.10.1/24
+        enabled: true
         
    - name: Merge provided OSPF Interfaces configuration
      cisco.ios.ios_ospf_interfaces:
@@ -31,3 +32,26 @@
             process:
               id: 1
               area_id: 0
+
+   - name: DHCP Snooping
+     cisco.ios.ios_config:
+      lines: 
+        - ip dhcp snooping 
+        - ip dhcp snooping vlan 10
+        - no ip dhcp snooping information option
+
+   - name: NTP Config
+     cisco.ios.ios_config:
+      lines: 
+        - ntp authenticate
+        - ntp master 1
+      #  - ntp server 10.1.17.201 prefer source
+
+   - name: AAA and 802.1x
+     cisco.ios.ios_config:
+      lines: 
+        - aaa new-model
+        - dot1x system-auth-control
+        - device-tracking policy aaa
+        - tracking enabled 
+        - exit 
