@@ -4,6 +4,10 @@
   connection: local
 
   tasks:
+   - name: configure top level configuration
+     cisco.ios.ios_config:
+     lines: ip routing 
+
    - name: Change hostname, domain name, and add DNS server
      cisco.ios.ios_system:
        hostname: c3650-1
