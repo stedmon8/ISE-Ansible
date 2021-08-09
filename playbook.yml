@@ -4,9 +4,10 @@
   connection: local
 
   tasks:
-   - name: Change Hostname and add DNS server
+   - name: Change hostname, domain name, and add DNS server
      cisco.ios.ios_system:
-       hostname: c9300-1
+       hostname: c3650-1
+       domain_name: stbates.com
        name_servers: 
         - 198.18.133.1
 
@@ -15,6 +16,14 @@
       config:
       - name: vlan 10
         ipv4:
-        - address: 198.18.10.1/24
+        - address: 192.168.10.1/24
         
-       
+   - name: Merge provided OSPF Interfaces configuration
+     cisco.ios.ios_ospf_interfaces:
+      config:
+      - name: vlan 10
+        address_family:
+          - afi: ipv4
+            process:
+              id: 1
+              area_id: 0
