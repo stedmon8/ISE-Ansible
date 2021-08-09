@@ -59,6 +59,13 @@
       lines: 
         - aaa new-model
         - dot1x system-auth-control
+
+   - name: configure policer in Scavenger class
+     cisco.ios.ios_config:
+      lines:
+        - tracking enabled
+      parents:
         - device-tracking policy aaa
-        - tracking enabled 
-        - exit 
+      
+      
+
