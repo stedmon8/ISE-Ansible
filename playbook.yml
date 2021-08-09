@@ -21,7 +21,7 @@
       - name: vlan 10
         ipv4:
         - address: 192.168.10.1/24
-        enabled: true
+      
         
    - name: Merge provided OSPF Interfaces configuration
      cisco.ios.ios_ospf_interfaces:
@@ -32,6 +32,13 @@
             process:
               id: 1
               area_id: 0
+
+   - name: Turn on vlan 10 interface
+     cisco.ios.ios_interfaces:
+       config:
+       - name: vlan 10
+         description: Configured and Merged by Ansible Network
+         enabled: true
 
    - name: DHCP Snooping
      cisco.ios.ios_config:
