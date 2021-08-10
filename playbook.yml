@@ -91,7 +91,7 @@
 
 
    - name: AAA for Radius Part 4
-      cisco.ios.ios_config:
+     cisco.ios.ios_config:
        lines:
          - ip radius source-interface gi1/0/2
          - aaa authentication dot1x default group ISE_RADIUS
@@ -102,7 +102,7 @@
     
 
    - name: Configuring Trustsec
-      cisco.ios.ios_config:
+     cisco.ios.ios_config:
        lines:
          - aaa authorization network CTS group ISE_RADIUS
          - cts authorization list CTS
@@ -113,11 +113,11 @@
 
 
    - name: Configure Trustsec
-      cisco.ios.ios_command:
+     cisco.ios.ios_command:
        commands: cts credentials id c3650-1 password 12345678
 
    - name: Configuring Trustsec
-      cisco.ios.ios_config:
+     cisco.ios.ios_config:
        lines:
          - description ISE dot1x Port
          - switchport access vlan 10
@@ -138,7 +138,7 @@
 
 
    - name: Add ip-helper to vlan 
-      cisco.ios.ios_config:
+     cisco.ios.ios_config:
        lines:
          - ip helper-address 10.1.17.201
        parents:
@@ -146,7 +146,7 @@
       
 
    - name: Configure Defualt ACL
-      cisco.ios.ios_config:
+     cisco.ios.ios_config:
        lines:
          - permit udp any eq bootpc any eq bootps
          - permit udp any any eq domain
