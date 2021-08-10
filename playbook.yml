@@ -67,27 +67,90 @@
       parents:
         - device-tracking policy aaa
 
-   - name: AAA for Radius 
+   - name: AAA for Radius Part 1
      cisco.ios.ios_config:
       lines:
         - server name ISE_RADIUS
       parents:
         - aaa group server radius ISE_RADIUS
 
-   - name: AAA for Radius 
+   - name: AAA for Radius Part 2
      cisco.ios.ios_config:
       lines:
         - client 10.1.17.245 server-key C!sco12345
         - auth-type any
       parents:
         - aaa server radius dynamic-author
-   - name: AAA for Radius 
+   - name: AAA for Radius Part 3
      cisco.ios.ios_config:
       lines:
         - address ipv4 10.1.17.245 auth-port 1812 acct-port 1813
         - pac key C!sco12345
       parents:
-        - radius ISE_RADIUS
+        - radius server ISE_RADIUS
+
+    - name: AAA for Radius Part 4
+      cisco.ios.ios_config:
+       lines:
+         - ip radius source-interface gi1/0/2
+         - aaa authentication dot1x default group ISE_RADIUS
+         - aaa authorization network default group ISE_RADIUS
+         - aaa authorization auth-proxy default group ISE_RADIUS
+         - aaa accounting auth-proxy default start-stop group ISE_RADIUS
+         - aaa accounting dot1x default start-stop group ISE_RADIUS
+    
+    - name: Configuring Trustsec
+      cisco.ios.ios_config:
+       lines:
+         - aaa authorization network CTS group ISE_RADIUS
+         - cts authorization list CTS
+         - cts authorization list CTS
+         - cts role-based enforcement
+         - cts role-based enforcement vlan-list 10
+         - no cts server test all enable 
+
+    - name: Configure Trustsec
+      cisco.ios.ios_command:
+       commands: cts credentials id c3650-1 password 12345678
+
+    - name: Configuring Trustsec
+      cisco.ios.ios_config:
+       lines:
+         - description ISE dot1x Port
+         - switchport access vlan 10
+         - device-tracking attach-policy AAA
+         - ip dhcp relay information trusted
+         - ip access-group ACL_DEFAULT in
+         - authentication host-mode multi-auth
+         - authentication open
+         - authentication order dot1x
+         - authentication priority dot1x
+         - authentication port-control auto
+         - authentication periodic
+         - authentication violations restrict
+         - dot1x pae authentictor 
+         - spanning-tree bpduguard enable
+       parents:
+         - interface GigabitEthernet1/0/1
+
+    - name: Add ip-helper to vlan 
+      cisco.ios.ios_config:
+       lines:
+         - ip helper-address 10.1.17.201
+       parents:
+         - interface vlan 10
+      
+    - name: Configure Defualt ACL
+      cisco.ios.ios_config:
+       lines:
+         - permit udp any eq bootpc any eq bootps
+         - permit udp any any eq domain
+         - permit icmp any any
+         - deny ip any any
+       parents:
+         - ip access-list extended ACL_DEFAULT
+
+ 
  
         
 
