@@ -87,7 +87,7 @@
         - address ipv4 10.1.17.245 auth-port 1812 acct-port 1813
         - pac key C!sco12345
       parents:
-        - radius ISE_RADIUS
+        - radius server ISE_RADIUS
  
         
 
