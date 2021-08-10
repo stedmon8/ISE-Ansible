@@ -89,7 +89,7 @@
       parents:
         - radius server ISE_RADIUS
 
-    - name: AAA for Radius Part 4
+   - name: AAA for Radius Part 4
       cisco.ios.ios_config:
        lines:
          - ip radius source-interface gi1/0/2
@@ -99,7 +99,7 @@
          - aaa accounting auth-proxy default start-stop group ISE_RADIUS
          - aaa accounting dot1x default start-stop group ISE_RADIUS
     
-    - name: Configuring Trustsec
+   - name: Configuring Trustsec
       cisco.ios.ios_config:
        lines:
          - aaa authorization network CTS group ISE_RADIUS
@@ -109,11 +109,11 @@
          - cts role-based enforcement vlan-list 10
          - no cts server test all enable 
 
-    - name: Configure Trustsec
+   - name: Configure Trustsec
       cisco.ios.ios_command:
        commands: cts credentials id c3650-1 password 12345678
 
-    - name: Configuring Trustsec
+   - name: Configuring Trustsec
       cisco.ios.ios_config:
        lines:
          - description ISE dot1x Port
@@ -133,14 +133,14 @@
        parents:
          - interface GigabitEthernet1/0/1
 
-    - name: Add ip-helper to vlan 
+   - name: Add ip-helper to vlan 
       cisco.ios.ios_config:
        lines:
          - ip helper-address 10.1.17.201
        parents:
          - interface vlan 10
       
-    - name: Configure Defualt ACL
+   - name: Configure Defualt ACL
       cisco.ios.ios_config:
        lines:
          - permit udp any eq bootpc any eq bootps
