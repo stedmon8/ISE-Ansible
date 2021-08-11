@@ -101,21 +101,21 @@
          - aaa accounting dot1x default start-stop group ISE_RADIUS
     
 
-   - name: Configuring Trustsec Part 1
-     cisco.ios.ios_config:
-       lines:
-         - aaa authorization network CTS group ISE_RADIUS
-         - cts authorization list CTS
-         - cts authorization list CTS
-         - cts role-based enforcement
-         - cts role-based enforcement vlan-list 10
-         - no cts server test all enable 
-         - exit
+  #  - name: Configuring Trustsec Part 1
+  #    cisco.ios.ios_config:
+  #      lines:
+  #        - aaa authorization network CTS group ISE_RADIUS
+  #        - cts authorization list CTS
+  #        - cts authorization list CTS
+  #        - cts role-based enforcement
+  #        - cts role-based enforcement vlan-list 10
+  #        - no cts server test all enable 
+  #        - exit
 
 
-   - name: Configure Trustsec Part 2
-     cisco.ios.ios_command:
-       commands: cts credentials id c3650-1 password 12345678
+  #  - name: Configure Trustsec Part 2
+  #    cisco.ios.ios_command:
+  #      commands: cts credentials id c3650-1 password 12345678
 
    - name: Configure interfaces for Vlans
      cisco.ios.ios_config:
