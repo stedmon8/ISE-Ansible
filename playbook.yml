@@ -124,6 +124,7 @@
          - device-tracking attach-policy AAA
          - ip dhcp relay information trusted
          - ip access-group ACL_DEFAULT in
+         - switchport host
          - authentication host-mode multi-auth
          - authentication open
          - authentication order dot1x
