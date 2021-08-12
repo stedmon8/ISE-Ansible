@@ -13,7 +13,7 @@
        hostname: c3650-1
        domain_name: stbates.com
        name_servers: 
-        - 198.18.133.1
+        - 10.1.17.201
 
    - name: Configure vlan 10 ip address 
      cisco.ios.ios_l3_interfaces:
@@ -133,7 +133,7 @@
          - authentication port-control auto
          - authentication periodic
          - authentication violations restrict
-         - dot1x pae authentictor 
+         - dot1x pae authenticator 
          - spanning-tree bpduguard enable
        parents:
          - interface GigabitEthernet1/0/1
