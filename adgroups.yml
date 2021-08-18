@@ -1,0 +1,30 @@
+---
+#
+# AD_Groups
+#
+adgroups:
+
+  #----------------------------------------------------------------------------
+  # Active Directory Groups
+  #----------------------------------------------------------------------------
+  - group_name: stbates.com/Builtin/Administrators
+    sid: stbates.com/S-1-5-32-544
+    type: BUILTIN, DOMAIN LOCAL
+
+  - group_name: stbates.com/Builtin/Network Configuration Operators
+    sid: stbates.com/S-1-5-32-556
+    type: BUILTIN, DOMAIN LOCAL
+
+  - group_name: stbates.com/Users/Contractors
+    sid: S-1-5-21-77207449-2291036674-2196077005-1109
+    type: GLOBAL
+
+  - group_name: stbates.com/Users/Domain Guests
+    sid: S-1-5-21-77207449-2291036674-2196077005-514
+    type: GLOBAL
+
+  - group_name: stbates.com/Users/Government Employees
+    sid: S-1-5-21-77207449-2291036674-2196077005-1110
+    type: GLOBAL
+
+  

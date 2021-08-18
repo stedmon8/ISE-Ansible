@@ -1,0 +1,14 @@
+---
+#
+# NAD_Groups
+#
+nadgroups:
+
+  #----------------------------------------------------------------------------
+  # Network Access Device Groups
+  #----------------------------------------------------------------------------
+  - name: Switches
+  - name: Routers
+  - name: WLCs
+  - name: Firewalls   
+

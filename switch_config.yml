@@ -52,7 +52,7 @@
       lines: 
         - ntp authenticate
         - ntp master 1
-      #  - ntp server 10.1.17.201 prefer source
+        - ntp server 10.1.17.201 prefer source
 
    - name: AAA and 802.1x
      cisco.ios.ios_config:
@@ -77,7 +77,7 @@
    - name: AAA for Radius Part 2
      cisco.ios.ios_config:
       lines:
-        - client 10.1.17.245 server-key C!sco12345
+        - client 10.1.17.245 server-key {{ radius_secret}}
         - auth-type any
       parents:
         - aaa server radius dynamic-author
@@ -85,7 +85,7 @@
      cisco.ios.ios_config:
       lines:
         - address ipv4 10.1.17.245 auth-port 1812 acct-port 1813
-        - pac key C!sco12345
+        - pac key {{ radius_secret}}
       parents:
         - radius server ISE_RADIUS
 

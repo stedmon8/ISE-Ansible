@@ -1,0 +1,181 @@
+- hosts: ISE
+  vars_files:
+    - secrets.yml
+  gather_facts: no
+  tasks:
+
+  - name: Get all network_access_policy_set_info
+    cisco.ise.network_access_policy_set_info:
+      ise_hostname: "{{ inventory_hostname }}"
+      ise_username: "{{ ise_username }}"
+      ise_password: "{{ ise_password }}"
+      ise_verify: "{{ ise_verify }}"
+    register: result
+
+  - name: Debug
+    ansible.builtin.debug: var=result
+
+  - name: Login to get APP SESSION Cookie for authentication
+    ansible.builtin.uri:
+      url: "https://10.1.17.245/admin/LoginAction.do"
+      method: POST
+      headers:
+        Accept: '*/*'
+        Connection: keep-alive
+        Content-Type: application/x-www-form-urlencoded
+        Content-Length: 180
+        Host: 10.1.17.245
+        Origin: https://10.1.17.245
+        Referer: https://10.1.17.245/admin/login.jsp
+        Sec-Fetch-Dest: document
+        Sec-Fetch-Mode: navigate
+        Sec-Fetch-Site: same-origin
+        Sec-Fetch-User: ?1
+        Upgrade-Insecure-Requests: 1
+      body: username=addmin&password=C%21sco12345&samlLogin=false&rememberme=on&name=admin&password=C%21sco12345&authType=Internal&newPassword=&destinationURL=&locale=en&hasSelectedLocale=false
+      status_code: 200, 302
+      validate_certs: no
+    delegate_to: localhost
+    register: response4
+
+  # - name: Get cookie session
+  #   debug:
+  #     msg: "{{ response4.set_cookie[0:45] }}"
+
+  - set_fact: cookie_session="{{ response4.set_cookie[0:45] }}"
+
+  - name: Get network policy Conditions
+    ansible.builtin.uri:
+        url: "https://10.1.17.245/admin/rs/uiapi/policytable/tacacs/conditions"
+        user: "admin"
+        password: "C!sco12345"
+        method: GET
+        headers:
+          Cookie: "{{ cookie_session }}"
+          Accept: application/json
+          Content-Type: application/json
+        status_code: 200, 201
+        validate_certs: no
+        return_content: true
+    register: result
+    delegate_to: localhost
+
+  - name: Debug
+    ansible.builtin.debug: var=result
+
+  - name: Create or update a network access conditions
+    cisco.ise.network_access_conditions:
+      ise_hostname: "{{ise_hostname}}"
+      ise_username: "{{ise_username}}"
+      ise_password: "{{ise_password}}"
+      ise_verify: "{{ise_verify}}"
+      state: present
+      conditionType: "LibraryConditionAttributes"
+      isNegate: False
+      name: "{{ condition_name }}"
+      description: "{{ condition_name }}"
+      dictionaryName: "{{ condition_dict_name }}"
+      attributeName: "{{ condition_att_name }}"
+      operator: "equals"
+      attributeValue: "{{ condition_att_value }}"
+    register: result
+
+  - name: Debug
+    ansible.builtin.debug: var=result.ise_response.id
+  - set_fact: condition_id="{{result.ise_response.id}}"
+
+  - name: Create network_access_policy_set_info
+    cisco.ise.network_access_policy_set:
+      ise_hostname: "{{ise_hostname}}"
+      ise_username: "{{ise_username}}"
+      ise_password: "{{ise_password}}"
+      ise_verify: "{{ise_verify}}"
+      state: present
+      condition:
+        conditionType: "ConditionReference"
+        isNegate: False
+        name: "{{ condition_name }}"
+        description: "{{ condition_name }}"
+        id: "{{ condition_id }}"
+      default: False
+      description: "Test Policy Set 4"
+      isProxy: False
+      rank: 2
+      serviceName: "Default Network Access"
+      name: "Test Policy Set 4"
+    register: result
+
+
+  - name: Debug
+    ansible.builtin.debug: var=result
+
+  - name: Get Policy Set
+    ansible.builtin.uri:
+        url: "https://10.1.17.245/admin/rs/uiapi/policytable/radius"
+        user: "admin"
+        password: "C!sco12345"
+        method: GET
+        headers:
+          Cookie: "{{ cookie_session }}"
+          Accept: application/json
+          Content-Type: application/json
+        status_code: 200, 201
+        validate_certs: no
+        return_content: true
+    register: response2
+    delegate_to: localhost
+
+  - name: Debug
+    ansible.builtin.debug: msg="{{response2.json[1].id}}"
+
+  - set_fact: policy_set_id="{{response2.json[1].id}}"
+
+  - name: Get all Network Access Identity Stores
+    cisco.ise.network_access_identity_stores_info:
+      ise_hostname: "{{ise_hostname}}"
+      ise_username: "{{ise_username}}"
+      ise_password: "{{ise_password}}"
+      ise_verify: "{{ise_verify}}"
+    register: result
+
+  - name: Debug
+    ansible.builtin.debug: msg="{{result.ise_response[2].name}}"
+
+  - name: Create or update an network_access_authentication_rules
+    cisco.ise.network_access_authentication_rules:
+      ise_hostname: "{{ise_hostname}}"
+      ise_username: "{{ise_username}}"
+      ise_password: "{{ise_password}}"
+      ise_verify: "{{ise_verify}}"
+      state: present
+      identitySourceName: "{{result.ise_response[2].name}}"
+      rule: 
+        default: False
+        name: "Test2"
+        hitCounts: 0
+        rank: 0
+        state: "enabled"
+        condition:
+          conditionType: "ConditionReference"
+          isNegate: False
+          dictionaryName: "{{ condition_dict_name }}"
+          attributeName: "{{ condition_att_name }}"
+          operator: "equals"
+          attributeValue: "{{ condition_att_value }}"
+          name: "{{ condition_name }}"
+          id: "{{ condition_id }}"
+      ifAuthFail: "REJECT"
+      ifUserNotFound: "REJECT"
+      ifProcessFail: "DROP"
+      policyId: "{{policy_set_id}}"
+
+  - name: Get Authorization profile
+    cisco.ise.authorization_profile_info:
+      ise_hostname: "{{ise_hostname}}"
+      ise_username: "{{ise_username}}"
+      ise_password: "{{ise_password}}"
+      ise_verify: "{{ise_verify}}"
+    register: result
+
+
+  
