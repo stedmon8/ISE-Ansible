@@ -1,12 +1,12 @@
 
  variable "accesskey" {
   type = string 
-  default = "AKIAWGRXNRVQHNQANY4C"
+  default = ""
 }
 
 variable "secretkey" {
     type = string 
-    default = "hDMXCaDA00tcP8rFjK3T9I4AzTjkJTE5IeGY5EzA"
+    default = ""
 }
 
  variable "ise_base_hostname" {
