@@ -1,0 +1,56 @@
+#
+# Conditions for Wired-802.1x Policy Set Authentication/ Authorization
+#
+
+conditions:
+
+  #----------------------------------------------------------------------------
+  # Conditions 
+  #----------------------------------------------------------------------------
+  - condition_name: "Guest_Condition"
+    name: Guest Authorization
+    condition_dict_name: "stbates"
+    condition_att_name: "ExternalGroups"
+    condition_att_value: "stbates.com/Users/Domain Guests"
+    condition_id: 2d820191-b6c9-4398-b771-e738484c00a1
+    profile_name: Guest_Access
+    vlan: 10
+    sg: Guests
+    condition_namex: "8021x Switches"
+    namex: 8021x Switches
+    condition_dict_namex: "DEVICE"
+    condition_att_namex: "Device Type"
+    condition_att_valuex: "All Device Types#Switches"
+    condition_idx: 73358536-eedc-45f2-a7fc-cb87f9e72dc7
+   
+  - condition_name: "Contractor_Condition"
+    name: Contractor Authorization
+    condition_dict_name: "stbates"
+    condition_att_name: "ExternalGroups"
+    condition_att_value: "stbates.com/Users/Contractors"
+    condition_id: ea04b3b3-38b4-4f43-a80c-9b5d45996430
+    profile_name: Contractor_Access
+    vlan: 10
+    sg: Contractors
+    condition_namex: "8021x Switches"
+    namex: 8021x Switches
+    condition_dict_namex: "DEVICE"
+    condition_att_namex: "Device Type"
+    condition_att_valuex: "All Device Types#Switches"
+    condition_idx: 73358536-eedc-45f2-a7fc-cb87f9e72dc7
+
+  - condition_name: "Government_Condition"
+    name: Government Authorization
+    condition_dict_name: "stbates"
+    condition_att_name: "ExternalGroups"
+    condition_att_value: "stbates.com/Users/Government Employees"
+    condition_id: 573b3e36-c16b-40eb-9882-877c7e21556b
+    profile_name: Government_Access
+    vlan: 10
+    sg: Government_Employees
+    condition_namex: "8021x Switches"
+    namex: 8021x Switches
+    condition_dict_namex: "DEVICE"
+    condition_att_namex: "Device Type"
+    condition_att_valuex: "All Device Types#Switches"
+    condition_idx: 73358536-eedc-45f2-a7fc-cb87f9e72dc7

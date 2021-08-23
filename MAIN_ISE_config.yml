@@ -1,0 +1,422 @@
+---
+- hosts: ISE
+  vars_files:
+    - secrets.yml
+    - networkingdevices.yml
+    - adgroups.yml
+    - nad_groups.yml
+    - ad_groups_conditions.yml
+  gather_facts: no
+
+  tasks:
+    # - name: Get All Network Device Groups (id/name/description)
+    #   cisco.ise.network_device_group_info:
+    #     ise_hostname: "{{ inventory_hostname }}"
+    #     ise_username: "{{ ise_username }}"
+    #     ise_password: "{{ ise_password }}"
+    #     ise_verify: "{{ ise_verify }}"
+    #   register: device_groups
+
+    # - name: List Network Device Groups by Name 
+    #   ansible.builtin.shell: 'echo "{{ device_groups.ise_response
+    #   | community.general.json_query(query) 
+    #   | to_nice_yaml(indent=2) }}" > /dev/tty'
+    #   delegate_to: localhost
+    #   changed_when: false
+    #   vars:
+    #     query: "[*].name"
+    # - name: Debug output
+    #   ansible.builtin.debug:
+    #     var: device_groups
+
+    - name: Create Network Device Groups for Routers, Swithes, Firewalls, and WLCs
+      cisco.ise.network_device_group:
+        ise_hostname: "{{ise_hostname}}"
+        ise_username: "{{ise_username}}"
+        ise_password: "{{ise_password}}"
+        ise_verify: "{{ise_verify}}"
+        state: present
+        description: "{{item.name}}"
+        name: "Device Type#All Device Types#{{item.name}}"
+        othername: Device Type
+      loop: "{{ nadgroups }}"
+      ignore_errors: True
+     
+    
+    - name: "Create Network Device for {{ item.device_name }} and add it to Switches NAD group"
+      cisco.ise.network_device:
+        ise_hostname: "{{ inventory_hostname }}"
+        ise_username: "{{ ise_username }}"
+        ise_password: "{{ ise_password }}"
+        ise_verify: "{{ ise_verify }}"
+        state: present
+        name: "{{ item.device_name }}"
+        description: "{{ item.device_name }}"
+        profileName: "{{ item.profile_name | default(profile_name) }}"
+        NetworkDeviceIPList:
+        - ipaddress: "{{ item.ipv4 }}"
+          mask: 32
+        NetworkDeviceGroupList: "{{ item.network_device_groups }}"
+        authenticationSettings:
+          networkProtocol: RADIUS
+          radiusSharedSecret: "{{ item.radius_secret | default(radius_secret) }}"
+          enableKeyWrap: False
+          dtlsRequired: False
+          enableMultiSecret: False
+        dtlsDnsName: "{{ item.device_name }}"
+        coaPort: 0
+        trustsecsettings:
+          deviceAuthenticationSettings:
+            sgaDeviceId: "c3650-1"
+            sgaDevicePassword: "12345678"
+          deviceConfigurationDeployment:
+            enableModePassword: "{{ ise_password }}"
+            execModePassword: "{{ ise_password }}"
+            execModeUsername: "stbates"
+            includeWhenDeployingSGTUpdates: true
+          pushIdSupport: true
+          sgaNotificationAndUpdates:
+            coaSourceHost: 'ise2.stbates.com'
+            downlaodEnvironmentDataEveryXSeconds: 86400
+            downlaodPeerAuthorizationPolicyEveryXSeconds: 86400
+            downloadSGACLListsEveryXSeconds: 86400
+            otherSGADevicesToTrustThisDevice: true
+            reAuthenticationEveryXSeconds: 86400
+            sendConfigurationToDevice: true
+            sendConfigurationToDeviceUsing: "ENABLE_USING_COA"
+      loop: "{{ networkdevices }}"
+      ignore_errors: True
+
+
+    # - name: "Get Network Device by Name: {{ item.device_name }}"
+    #   cisco.ise.network_device_info:
+    #     ise_hostname: "{{ inventory_hostname }}"
+    #     ise_username: "{{ ise_username }}"
+    #     ise_password: "{{ ise_password }}"
+    #     ise_verify: "{{ ise_verify }}"
+    #     name: "{{ item.device_name }}"
+    #   register: output
+    #   loop: "{{ networkdevices }}"
+
+
+    # - name: Debug output
+    #   ansible.builtin.debug:
+    #     var: output
+    
+    
+    - name: Create join point to allow AD to join ISE
+      ansible.builtin.uri:
+        url: "https://10.1.17.245:9060/ers/config/activedirectory"
+        method: POST
+        url_username: "{{ ise_username }}"
+        url_password: "{{ ise_password }}"
+        force_basic_auth: yes
+        headers:
+          Accept: application/json
+          Content-Type: application/json
+        body: '{ "ERSActiveDirectory":  {"name" : "stbates", "description" : "Group of Active company users", "domain" : "stbates.com"}}'
+        status_code: 200, 201
+        validate_certs: no
+        return_content: true
+      register: response
+      delegate_to: localhost
+      ignore_errors: True
+      # when: configured is defined and configured == 1
+
+    - name: Get All AD Join points
+      ansible.builtin.uri:
+        url: "https://10.1.17.245:9060/ers/config/activedirectory"
+        method: GET
+        url_username: "{{ ise_username }}"
+        url_password: "{{ ise_password }}"
+        force_basic_auth: yes
+        headers:
+          Accept: application/json
+          Content-Type: application/json
+        status_code: 200, 201
+        validate_certs: no
+        return_content: true
+      register: response
+      delegate_to: localhost
+
+    - name: Get Ad ID from json repsonse above and put into variable ISE_AD_ID
+      ansible.builtin.debug:
+        msg: "{{response.json.SearchResult.resources[0].id }}"
+      delegate_to: localhost
+
+    - set_fact: ISE_AD_ID="{{ response.json.SearchResult.resources[0].id }}"
+
+    - name: Get 
+      debug:
+       msg: "{{ ISE_AD_ID }}"
+    
+
+    - name: Add AD to ISE
+      cisco.ise.active_directory_join_domain:
+        ise_hostname: "{{ise_hostname}}"
+        ise_username: "{{ise_username}}"
+        ise_password: "{{ise_password}}"
+        ise_verify: "{{ise_verify}}"
+        additionalData:
+        - name: "username"
+          value: "administrator"
+        - name: "password"
+          value: "C!sco12345"
+        - name: "node"
+          value: "ise2.stbates.com"
+        id: "{{ ISE_AD_ID }}"
+      ignore_errors: True
+      
+    - name: Add Specific AD Groups
+      cisco.ise.active_directory_add_groups:
+          ise_hostname: "{{ise_hostname}}"
+          ise_username: "{{ise_username}}"
+          ise_password: "{{ise_password}}"
+          ise_verify: "{{ise_verify}}"
+          domain: "stbates.com"
+          id: "{{ ISE_AD_ID }}"
+          name: "stbates"
+          adgroups:
+            groups:
+            - name: "{{ item.group_name }}"
+              sid: "{{ item.sid }}"
+              type: "{{ item.type }}"
+      loop: "{{ adgroups }}"
+
+    - name: Get all network_access_policy_set_info
+      cisco.ise.network_access_policy_set_info:
+        ise_hostname: "{{ inventory_hostname }}"
+        ise_username: "{{ ise_username }}"
+        ise_password: "{{ ise_password }}"
+        ise_verify: "{{ ise_verify }}"
+      register: result
+
+    - name: Debug
+      ansible.builtin.debug: var=result.ise_response.response[0].id
+    - set_fact: policy_set_id="{{result.ise_response.response[0].id}}"
+
+    - name: Login to get APP SESSION Cookie for authentication
+      ansible.builtin.uri:
+        url: "https://10.1.17.245/admin/LoginAction.do"
+        method: POST
+        headers:
+          Accept: '*/*'
+          Connection: keep-alive
+          Content-Type: application/x-www-form-urlencoded
+        body: username=addmin&password=C%21sco12345&samlLogin=false&rememberme=on&name=admin&password=C%21sco12345&authType=Internal&newPassword=&destinationURL=&locale=en&hasSelectedLocale=false
+        status_code: 200, 302
+        validate_certs: no
+      delegate_to: localhost
+      register: response4
+
+    # - name: Get cookie session
+    #   debug:
+    #     msg: "{{ response4.set_cookie[0:45] }}"
+
+    - set_fact: cookie_session="{{ response4.set_cookie[0:45] }}"
+
+    - name: Get Network Policy Conditions
+      ansible.builtin.uri:
+          url: "https://10.1.17.245/admin/rs/uiapi/policytable/tacacs/conditions"
+          user: "admin"
+          password: "C!sco12345"
+          method: GET
+          headers:
+            Cookie: "{{ cookie_session }}"
+            Accept: application/json
+            Content-Type: application/json
+          status_code: 200, 201
+          validate_certs: no
+          return_content: true
+      register: result
+      delegate_to: localhost
+
+    - name: Show network policy Conditions
+      ansible.builtin.debug: var=result
+
+    - name: "Create AD_GROUP Network Access Conditions for Policy Set and AuthZ Policy"
+      cisco.ise.network_access_conditions:
+        ise_hostname: "{{ise_hostname}}"
+        ise_username: "{{ise_username}}"
+        ise_password: "{{ise_password}}"
+        ise_verify: "{{ise_verify}}"
+        state: present
+        conditionType: "LibraryConditionAttributes"
+        isNegate: False
+        name: "{{ item.condition_name }}"
+        description: "{{ item.condition_name }}"
+        dictionaryName: "{{ item.condition_dict_name }}"
+        attributeName: "{{ item.condition_att_name }}"
+        operator: "equals"
+        attributeValue: "{{ item.condition_att_value }}"
+      register: result2
+      loop: "{{ conditions }}"
+
+    # - name: Show Network Access Condition ID's for each AD_Group 
+    #   ansible.builtin.debug: msg="item.ise_response.id={{ item.ise_response.id }}"
+    #   loop: "{{ result2.results }}"
+
+    # - set_fact: {"{{ item.ise_response.name }}":"{{ item.ise_response.id }}"}
+    #   loop: "{{ result2.results }}"
+    
+    - name:  802.1x Create Network Access Conditions for Policy Set and AuthZ Policy
+      cisco.ise.network_access_conditions:
+        ise_hostname: "{{ise_hostname}}"
+        ise_username: "{{ise_username}}"
+        ise_password: "{{ise_password}}"
+        ise_verify: "{{ise_verify}}"
+        state: present
+        conditionType: "LibraryConditionAttributes"
+        isNegate: False
+        name: "{{ condition_name }}"
+        description: "{{ condition_name }}"
+        dictionaryName: "{{ condition_dict_name }}"
+        attributeName: "{{ condition_att_name }}"
+        operator: "equals"
+        attributeValue: "{{ condition_att_value }}"
+      register: result
+
+    - name: Show Network Access Condition ID for 802.1x Condition 
+      ansible.builtin.debug: var=result.ise_response.id
+    - set_fact: condition_id="{{result.ise_response.id}}"
+
+    - name: Create Network Access Policy Set and rank it at the top
+      cisco.ise.network_access_policy_set:
+        ise_hostname: "{{ise_hostname}}"
+        ise_username: "{{ise_username}}"
+        ise_password: "{{ise_password}}"
+        ise_verify: "{{ise_verify}}"
+        state: present
+        condition:
+          conditionType: "ConditionReference"
+          isNegate: False
+          name: "{{ condition_name }}"
+          description: "{{ condition_name }}"
+          id: "{{ condition_id }}"
+        default: False
+        description: "Wired-802.1x Switches"
+        isProxy: False
+        rank: 0
+        serviceName: "Default Network Access"
+        name: "Wired-802.1x Switches"
+      register: result
+
+
+    - name: Show results of creating Network Access Policy Set
+      ansible.builtin.debug: var=result
+
+
+    - name: Get all Network Access Identity Stores
+      cisco.ise.network_access_identity_stores_info:
+        ise_hostname: "{{ise_hostname}}"
+        ise_username: "{{ise_username}}"
+        ise_password: "{{ise_password}}"
+        ise_verify: "{{ise_verify}}"
+      register: result
+
+    - name: Show Network Access Identity Store for domain
+      ansible.builtin.debug: msg="{{result.ise_response[3].name}}"
+
+    - name: Create Network Access Authentication Rule for Wired-802.1x Policy Set
+      cisco.ise.network_access_authentication_rules:
+        ise_hostname: "{{ise_hostname}}"
+        ise_username: "{{ise_username}}"
+        ise_password: "{{ise_password}}"
+        ise_verify: "{{ise_verify}}"
+        state: present
+        identitySourceName: "{{result.ise_response[3].name}}"
+        rule: 
+          default: False
+          name: "Wired-802.1x-Users"
+          hitCounts: 0
+          rank: 0
+          state: "enabled"
+          condition:
+            conditionType: "ConditionReference"
+            isNegate: False
+            dictionaryName: "{{ condition_dict_name }}"
+            attributeName: "{{ condition_att_name }}"
+            operator: "equals"
+            attributeValue: "{{ condition_att_value }}"
+            name: "{{ condition_name }}"
+            id: "{{ condition_id }}"
+        ifAuthFail: "REJECT"
+        ifUserNotFound: "REJECT"
+        ifProcessFail: "DROP"
+        policyId: "{{policy_set_id}}"
+
+    # - name: Get Authorization profiles
+    #   cisco.ise.authorization_profile_info:
+    #     ise_hostname: "{{ise_hostname}}"
+    #     ise_username: "{{ise_username}}"
+    #     ise_password: "{{ise_password}}"
+    #     ise_verify: "{{ise_verify}}"
+    #   register: result
+
+    # - name: Show Authorization Profiles
+    #   ansible.builtin.debug: var=result
+
+    - name: Create Authorization profile for AD Group
+      cisco.ise.authorization_profile:
+        ise_hostname: "{{ise_hostname}}"
+        ise_username: "{{ise_username}}"
+        ise_password: "{{ise_password}}"
+        ise_verify: "{{ise_verify}}"
+        state: present
+        accessType: ACCESS_ACCEPT
+        authzProfileType: SWITCH
+        daclName: PERMIT_ALL_IPV4_TRAFFIC
+        description: "{{ item.profile_name }}"
+        easywiredSessionCandidate: false
+        name: "{{ item.profile_name }}"
+        profileName: Cisco
+        serviceTemplate: false
+        trackMovement: false
+        vlan:
+          nameID: "{{ item.vlan | string }}"
+          tagID: "{{ item.vlan | int }}"
+      register: result
+      loop: "{{ conditions }}"
+
+
+    - name: Create or Network Access Authorization rules for Wired-802.1x Policy Set
+      cisco.ise.network_access_authorization_rules:
+        ise_hostname: "{{ise_hostname}}"
+        ise_username: "{{ise_username}}"
+        ise_password: "{{ise_password}}"
+        ise_verify: "{{ise_verify}}"
+        state: present
+        rule:
+          default: false
+          name: "{{ item.name }}"
+          hitCounts: 0
+          rank: 0
+          state: enabled
+          condition: 
+            conditionType: ConditionAndBlock
+            children: 
+            - conditionType: "ConditionReference"
+              isNegate: False
+              name: "{{ item.condition_namex }}"
+              description: "{{ item.condition_namex }}"
+              dictionaryName: "{{ item.condition_dict_namex }}"
+              attributeName: "{{ item.condition_att_namex }}"
+              operator: "equals"
+              attributeValue: "{{ item.condition_att_valuex }}"
+              id: "{{ item.condition_idx }}"
+
+            - conditionType: "ConditionReference"
+              isNegate: False
+              dictionaryName: "{{ item.condition_dict_name }}"
+              attributeName: "{{ item.condition_att_name }}"
+              operator: "equals"
+              attributeValue: "{{ item.condition_att_value }}"
+              name: "{{ item.condition_name }}"
+              description: "{{ item.condition_namex }}"
+              id: "{{ item.condition_id  }}"
+        profile:
+        - "{{ item.profile_name }}"
+        securityGroup: "{{ item.sg }}"
+        policyId: "{{ policy_set_id }}"
+      register: result
+      loop: "{{ conditions }}"

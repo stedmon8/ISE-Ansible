@@ -1,0 +1,24 @@
+---
+#
+# Authorization Profiles for Wired-802.1x Policy Set
+#
+
+auth_profiles:
+
+  #----------------------------------------------------------------------------
+  # Authorization Profiles
+  #----------------------------------------------------------------------------
+  - name: Guest Authorization
+    profile_name: Guest_Access
+    vlan: 10
+    sg: Guests
+
+  - name: Contractor Authorization
+    profile_name: Contractor_Access
+    vlan: 10
+    sg: Contractors
+
+  - name: Government Authorization
+    profile_name: Government_Access
+    vlan: 10
+    sg: Government_Employees

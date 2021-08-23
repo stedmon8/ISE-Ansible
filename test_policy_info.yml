@@ -1,6 +1,8 @@
 - hosts: ISE
   vars_files:
     - secrets.yml
+    - auth_profiles.yml
+    - ad_groups_conditions.yml
   gather_facts: no
   tasks:
 
@@ -23,15 +25,6 @@
         Accept: '*/*'
         Connection: keep-alive
         Content-Type: application/x-www-form-urlencoded
-        Content-Length: 180
-        Host: 10.1.17.245
-        Origin: https://10.1.17.245
-        Referer: https://10.1.17.245/admin/login.jsp
-        Sec-Fetch-Dest: document
-        Sec-Fetch-Mode: navigate
-        Sec-Fetch-Site: same-origin
-        Sec-Fetch-User: ?1
-        Upgrade-Insecure-Requests: 1
       body: username=addmin&password=C%21sco12345&samlLogin=false&rememberme=on&name=admin&password=C%21sco12345&authType=Internal&newPassword=&destinationURL=&locale=en&hasSelectedLocale=false
       status_code: 200, 302
       validate_certs: no
@@ -63,7 +56,32 @@
   - name: Debug
     ansible.builtin.debug: var=result
 
-  - name: Create or update a network access conditions
+  - name: "Create Network Access AD_GROUP Conditions for Policy Set and AuthZ Policy- {{ item }}"
+    cisco.ise.network_access_conditions:
+      ise_hostname: "{{ise_hostname}}"
+      ise_username: "{{ise_username}}"
+      ise_password: "{{ise_password}}"
+      ise_verify: "{{ise_verify}}"
+      state: present
+      conditionType: "LibraryConditionAttributes"
+      isNegate: False
+      name: "{{ item.condition_name }}"
+      description: "{{ item.condition_name }}"
+      dictionaryName: "{{ item.condition_dict_name }}"
+      attributeName: "{{ item.condition_att_name }}"
+      operator: "equals"
+      attributeValue: "{{ item.condition_att_value }}"
+    register: result2
+    loop: "{{ conditions }}"
+
+  - name: Debug
+    ansible.builtin.debug: msg="item.ise_response.id={{ item.ise_response.id }}"
+    loop: "{{ result2.results }}"
+
+  - set_fact: {"{{ item.ise_response.name }}":"{{ item.ise_response.id }}"}
+    loop: "{{ result2.results }}"
+  
+  - name: Create Network Access 802.1x Conditions for Policy Set and AuthZ Policy
     cisco.ise.network_access_conditions:
       ise_hostname: "{{ise_hostname}}"
       ise_username: "{{ise_username}}"
@@ -84,7 +102,7 @@
     ansible.builtin.debug: var=result.ise_response.id
   - set_fact: condition_id="{{result.ise_response.id}}"
 
-  - name: Create network_access_policy_set_info
+  - name: Create Network Access Policy Set
     cisco.ise.network_access_policy_set:
       ise_hostname: "{{ise_hostname}}"
       ise_username: "{{ise_username}}"
@@ -98,11 +116,11 @@
         description: "{{ condition_name }}"
         id: "{{ condition_id }}"
       default: False
-      description: "Test Policy Set 4"
+      description: "Wired-802.1x Switches"
       isProxy: False
-      rank: 2
+      rank: 0
       serviceName: "Default Network Access"
-      name: "Test Policy Set 4"
+      name: "Wired-802.1x Switches"
     register: result
 
 
@@ -126,9 +144,9 @@
     delegate_to: localhost
 
   - name: Debug
-    ansible.builtin.debug: msg="{{response2.json[1].id}}"
+    ansible.builtin.debug: msg="{{response2.json[0].id}}"
 
-  - set_fact: policy_set_id="{{response2.json[1].id}}"
+  - set_fact: policy_set_id="{{response2.json[0].id}}"
 
   - name: Get all Network Access Identity Stores
     cisco.ise.network_access_identity_stores_info:
@@ -139,7 +157,7 @@
     register: result
 
   - name: Debug
-    ansible.builtin.debug: msg="{{result.ise_response[2].name}}"
+    ansible.builtin.debug: msg="{{result.ise_response[3].name}}"
 
   - name: Create or update an network_access_authentication_rules
     cisco.ise.network_access_authentication_rules:
@@ -148,10 +166,10 @@
       ise_password: "{{ise_password}}"
       ise_verify: "{{ise_verify}}"
       state: present
-      identitySourceName: "{{result.ise_response[2].name}}"
+      identitySourceName: "{{result.ise_response[3].name}}"
       rule: 
         default: False
-        name: "Test2"
+        name: "Wired-802.1x-Users"
         hitCounts: 0
         rank: 0
         state: "enabled"
@@ -177,5 +195,71 @@
       ise_verify: "{{ise_verify}}"
     register: result
 
+  - name: Create or update Authorization profile
+    cisco.ise.authorization_profile:
+      ise_hostname: "{{ise_hostname}}"
+      ise_username: "{{ise_username}}"
+      ise_password: "{{ise_password}}"
+      ise_verify: "{{ise_verify}}"
+      state: present
+      accessType: ACCESS_ACCEPT
+      authzProfileType: SWITCH
+      daclName: PERMIT_ALL_IPV4_TRAFFIC
+      description: "{{ item.profile_name }}"
+      easywiredSessionCandidate: false
+      name: "{{ item.profile_name }}"
+      profileName: Cisco
+      serviceTemplate: false
+      trackMovement: false
+      vlan:
+        nameID: "{{ item.vlan | string }}"
+        tagID: "{{ item.vlan | int }}"
+    register: result
+    loop: "{{ conditions }}"
 
-  
+
+  - name: Create or update an network_access_authorization_rules
+    cisco.ise.network_access_authorization_rules:
+      ise_hostname: "{{ise_hostname}}"
+      ise_username: "{{ise_username}}"
+      ise_password: "{{ise_password}}"
+      ise_verify: "{{ise_verify}}"
+      state: present
+      rule:
+        default: false
+        name: "{{ item.name }}"
+        hitCounts: 0
+        rank: 0
+        state: enabled
+        condition: 
+          conditionType: ConditionAndBlock
+          children: 
+          - conditionType: "ConditionReference"
+            isNegate: False
+            name: "{{ item.condition_namex }}"
+            description: "{{ item.condition_namex }}"
+            dictionaryName: "{{ item.condition_dict_namex }}"
+            attributeName: "{{ item.condition_att_namex }}"
+            operator: "equals"
+            attributeValue: "{{ item.condition_att_valuex }}"
+            id: "{{ item.condition_idx }}"
+
+          - conditionType: "ConditionReference"
+            isNegate: False
+            dictionaryName: "{{ item.condition_dict_name }}"
+            attributeName: "{{ item.condition_att_name }}"
+            operator: "equals"
+            attributeValue: "{{ item.condition_att_value }}"
+            name: "{{ item.condition_name }}"
+            description: "{{ item.condition_namex }}"
+            id: "{{ item.condition_id  }}"
+      profile:
+      - "{{ item.profile_name }}"
+      securityGroup: "{{ item.sg }}"
+      policyId: "{{ policy_set_id }}"
+    register: result
+    loop: "{{ conditions }}"
+
+
+
+
