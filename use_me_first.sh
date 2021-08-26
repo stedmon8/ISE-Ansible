@@ -1,6 +1,6 @@
-# Change the prompt to 2 lines with directory on top line
-PS1='[$(pwd)]\n\u@\h ᐅ '
-export PS1
+# # Change the prompt to 2 lines with directory on top line
+# PS1='[$(pwd)]\n\u@\h ᐅ '
+# export PS1
 
 # Ignore Python Requests library warning about not verifying certificates
 export PYTHONWARNINGS="ignore:Unverified HTTPS request"

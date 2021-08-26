@@ -9,6 +9,7 @@
   gather_facts: no
 
   tasks:
+    
     # - name: Get All Network Device Groups (id/name/description)
     #   cisco.ise.network_device_group_info:
     #     ise_hostname: "{{ inventory_hostname }}"
@@ -28,7 +29,7 @@
     # - name: Debug output
     #   ansible.builtin.debug:
     #     var: device_groups
-
+   
     - name: Create Network Device Groups for Routers, Swithes, Firewalls, and WLCs
       cisco.ise.network_device_group:
         ise_hostname: "{{ise_hostname}}"
@@ -252,171 +253,12 @@
       register: result2
       loop: "{{ conditions }}"
 
-    # - name: Show Network Access Condition ID's for each AD_Group 
-    #   ansible.builtin.debug: msg="item.ise_response.id={{ item.ise_response.id }}"
-    #   loop: "{{ result2.results }}"
+    - name: Show Network Access Condition ID's for each AD_Group 
+      ansible.builtin.debug: msg="{{item.ise_response.name}}_ID = {{ item.ise_response.id }} <---Put each AD group condition in ad_group_conditons.yml!"
+      loop: "{{ result2.results }}"
 
-    # - set_fact: {"{{ item.ise_response.name }}":"{{ item.ise_response.id }}"}
-    #   loop: "{{ result2.results }}"
+
     
-    - name:  802.1x Create Network Access Conditions for Policy Set and AuthZ Policy
-      cisco.ise.network_access_conditions:
-        ise_hostname: "{{ise_hostname}}"
-        ise_username: "{{ise_username}}"
-        ise_password: "{{ise_password}}"
-        ise_verify: "{{ise_verify}}"
-        state: present
-        conditionType: "LibraryConditionAttributes"
-        isNegate: False
-        name: "{{ condition_name }}"
-        description: "{{ condition_name }}"
-        dictionaryName: "{{ condition_dict_name }}"
-        attributeName: "{{ condition_att_name }}"
-        operator: "equals"
-        attributeValue: "{{ condition_att_value }}"
-      register: result
-
-    - name: Show Network Access Condition ID for 802.1x Condition 
-      ansible.builtin.debug: var=result.ise_response.id
-    - set_fact: condition_id="{{result.ise_response.id}}"
-
-    - name: Create Network Access Policy Set and rank it at the top
-      cisco.ise.network_access_policy_set:
-        ise_hostname: "{{ise_hostname}}"
-        ise_username: "{{ise_username}}"
-        ise_password: "{{ise_password}}"
-        ise_verify: "{{ise_verify}}"
-        state: present
-        condition:
-          conditionType: "ConditionReference"
-          isNegate: False
-          name: "{{ condition_name }}"
-          description: "{{ condition_name }}"
-          id: "{{ condition_id }}"
-        default: False
-        description: "Wired-802.1x Switches"
-        isProxy: False
-        rank: 0
-        serviceName: "Default Network Access"
-        name: "Wired-802.1x Switches"
-      register: result
-
-
-    - name: Show results of creating Network Access Policy Set
-      ansible.builtin.debug: var=result
-
-
-    - name: Get all Network Access Identity Stores
-      cisco.ise.network_access_identity_stores_info:
-        ise_hostname: "{{ise_hostname}}"
-        ise_username: "{{ise_username}}"
-        ise_password: "{{ise_password}}"
-        ise_verify: "{{ise_verify}}"
-      register: result
-
-    - name: Show Network Access Identity Store for domain
-      ansible.builtin.debug: msg="{{result.ise_response[3].name}}"
-
-    - name: Create Network Access Authentication Rule for Wired-802.1x Policy Set
-      cisco.ise.network_access_authentication_rules:
-        ise_hostname: "{{ise_hostname}}"
-        ise_username: "{{ise_username}}"
-        ise_password: "{{ise_password}}"
-        ise_verify: "{{ise_verify}}"
-        state: present
-        identitySourceName: "{{result.ise_response[3].name}}"
-        rule: 
-          default: False
-          name: "Wired-802.1x-Users"
-          hitCounts: 0
-          rank: 0
-          state: "enabled"
-          condition:
-            conditionType: "ConditionReference"
-            isNegate: False
-            dictionaryName: "{{ condition_dict_name }}"
-            attributeName: "{{ condition_att_name }}"
-            operator: "equals"
-            attributeValue: "{{ condition_att_value }}"
-            name: "{{ condition_name }}"
-            id: "{{ condition_id }}"
-        ifAuthFail: "REJECT"
-        ifUserNotFound: "REJECT"
-        ifProcessFail: "DROP"
-        policyId: "{{policy_set_id}}"
-
-    # - name: Get Authorization profiles
-    #   cisco.ise.authorization_profile_info:
-    #     ise_hostname: "{{ise_hostname}}"
-    #     ise_username: "{{ise_username}}"
-    #     ise_password: "{{ise_password}}"
-    #     ise_verify: "{{ise_verify}}"
-    #   register: result
-
-    # - name: Show Authorization Profiles
-    #   ansible.builtin.debug: var=result
-
-    - name: Create Authorization profile for AD Group
-      cisco.ise.authorization_profile:
-        ise_hostname: "{{ise_hostname}}"
-        ise_username: "{{ise_username}}"
-        ise_password: "{{ise_password}}"
-        ise_verify: "{{ise_verify}}"
-        state: present
-        accessType: ACCESS_ACCEPT
-        authzProfileType: SWITCH
-        daclName: PERMIT_ALL_IPV4_TRAFFIC
-        description: "{{ item.profile_name }}"
-        easywiredSessionCandidate: false
-        name: "{{ item.profile_name }}"
-        profileName: Cisco
-        serviceTemplate: false
-        trackMovement: false
-        vlan:
-          nameID: "{{ item.vlan | string }}"
-          tagID: "{{ item.vlan | int }}"
-      register: result
-      loop: "{{ conditions }}"
-
-
-    - name: Create or Network Access Authorization rules for Wired-802.1x Policy Set
-      cisco.ise.network_access_authorization_rules:
-        ise_hostname: "{{ise_hostname}}"
-        ise_username: "{{ise_username}}"
-        ise_password: "{{ise_password}}"
-        ise_verify: "{{ise_verify}}"
-        state: present
-        rule:
-          default: false
-          name: "{{ item.name }}"
-          hitCounts: 0
-          rank: 0
-          state: enabled
-          condition: 
-            conditionType: ConditionAndBlock
-            children: 
-            - conditionType: "ConditionReference"
-              isNegate: False
-              name: "{{ item.condition_namex }}"
-              description: "{{ item.condition_namex }}"
-              dictionaryName: "{{ item.condition_dict_namex }}"
-              attributeName: "{{ item.condition_att_namex }}"
-              operator: "equals"
-              attributeValue: "{{ item.condition_att_valuex }}"
-              id: "{{ item.condition_idx }}"
-
-            - conditionType: "ConditionReference"
-              isNegate: False
-              dictionaryName: "{{ item.condition_dict_name }}"
-              attributeName: "{{ item.condition_att_name }}"
-              operator: "equals"
-              attributeValue: "{{ item.condition_att_value }}"
-              name: "{{ item.condition_name }}"
-              description: "{{ item.condition_namex }}"
-              id: "{{ item.condition_id  }}"
-        profile:
-        - "{{ item.profile_name }}"
-        securityGroup: "{{ item.sg }}"
-        policyId: "{{ policy_set_id }}"
-      register: result
-      loop: "{{ conditions }}"
+      
+    
+    
